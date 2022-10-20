@@ -1,0 +1,3 @@
+# Tries to find L1 cache size. 
+
+Support depends on hugetables in Linux; `make setup` will try and do that for you, but may not work.
