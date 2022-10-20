@@ -58,17 +58,18 @@ int main(int argc, char **argv)
     uint8_t *data = addr;
 
     uint64_t cb, ca, c;
-    int bytes = 1024;
+    //int bytes = 1024;
+    int bytes = 48000;
     int max_bytes = 262144;
 
-    while (bytes < 160000) {
+    while (bytes < 49500) {
         c = 0;
         int start = rand() % (max_bytes - bytes);
         // load as much data as 
         for (int i = start; i < start+bytes; i++) {
             data[i] += data[i];
         }
-        int iter = 10000000;
+        int iter = 20 * 1000 * 1000;
         int random;
         for (int i = 0; i < iter; i++) {
             random = start + rand() % bytes;
@@ -83,7 +84,7 @@ int main(int argc, char **argv)
         //printf("%" PRIu64 " ", c);
         printf("%d \n", bytes);
         fflush(stdout);
-        bytes *= 2;
+        bytes += 100;
     }
 
 
