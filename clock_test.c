@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <sched.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -9,7 +10,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#define LENGTH (2048UL*1024)
+#define LENGTH (512UL*1024*1024)
 #define PROTECTION (PROT_READ | PROT_WRITE)
 
 #ifndef MAP_HUGETLB
@@ -94,37 +95,77 @@ int main(int argc, char **argv)
 		perror("mmap");
 		exit(1);
 	}
-    uint8_t *data = addr;
 
     uint64_t cb, ca, c;
-    //int bytes = 1024;
-    int bytes = 48000;
-    int max_bytes = 262144;
 
-    while (bytes < 49500) {
+    int bytes = 1024;
+    int max_bytes = length;
+    uint8_t *data = addr;
+
+    double sumcpb = 0;
+    double n = 1;
+    while (bytes < max_bytes) {
         c = 0;
-        int start = rand() % (max_bytes - bytes);
-        // load as much data as 
-        for (int i = start; i < start+bytes; i++) {
-            data[i] += data[i];
-        }
-        int iter = 20 * 1000 * 1000;
-        int random;
+        int start = rand() % max_bytes;
+        int end = start + bytes;
+        int iter = 1 * 1000 * 1000;
+        int random = start;
         for (int i = 0; i < iter; i++) {
-            random = start + rand() % bytes;
             cb = rdtsc_s ();
-            data[random] += data[random];
+            data[random]++;
             ca = rdtsc_e ();
             c += ca - cb;
+            random += 64 + (rand() % 64);
+            if (random > end) 
+                random -= bytes;
         }
 
         double cpb = (double) c / (double) iter;
-        printf("%lf ", cpb);
-        //printf("%" PRIu64 " ", c);
-        printf("%d \n", bytes);
-        fflush(stdout);
-        bytes += 100;
+        if (sumcpb == 0)
+            sumcpb = cpb;
+        else if (cpb - (sumcpb / n) > 0.5)
+            break;
+        else {
+            n++;
+            sumcpb += cpb;
+        }
+        bytes *= 2;
     }
+    max_bytes = bytes;
+    bytes = bytes / 2;
+    sumcpb = 0; n = 1;
+
+    while (bytes < max_bytes) {
+        c = 0;
+        int start = rand() % max_bytes;
+        int end = start + bytes;
+        int iter = 10 * 1000 * 1000;
+        int random = start;
+        for (int i = 0; i < iter; i++) {
+            cb = rdtsc_s ();
+            data[random]++;
+            ca = rdtsc_e ();
+            c += ca - cb;
+            random += 64 + (rand() % 64);
+            if (random > end) 
+                random -= bytes;
+        }
+
+        double cpb = (double) c / (double) iter;
+        if (sumcpb == 0)
+            sumcpb = 1;
+        else if (sumcpb == 1)
+            sumcpb = cpb;
+        else if (fabs((sumcpb / n) - cpb) > 0.35)
+            break;
+        else {
+            n++;
+            sumcpb += cpb;
+        }
+        bytes += 1000;
+    }
+    printf("%d\n", bytes);
+    fflush(stdout);
 
 
 	/* munmap() length of MAP_HUGETLB memory must be hugepage aligned */

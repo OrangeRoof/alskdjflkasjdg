@@ -7,7 +7,14 @@ all:
 	gcc -O0 clock_test.c
 
 run:
-	sudo taskset --cpu-list 5 ./a.out
+	sudo ./a.out
+	
+benchmark: clean setup all
+	cat /proc/cmdline
+	sudo ./a.out
+	sudo ./a.out
+	sudo ./a.out
 
 clean:
 	rm a.out
+	sudo sysctl -w vm.nr_hugepages=0
