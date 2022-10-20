@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -43,8 +45,45 @@ static __inline__ int64_t rdtsc_e(void)
   return ((unsigned long)a) | (((unsigned long)d) << 32); 
 }
 
+/**
+ * Sets CPU affinity to a core
+ * 
+ * @param core_idx The index of the core to be set as the affinity core
+ * @return the status value of sched_setaffinity(), non-zero are error values
+ */
+int set_core(int core_idx) {
+	cpu_set_t mask;
+	CPU_ZERO(&mask);
+	CPU_SET(core_idx, &mask);
+
+	// 0 in the first arg means current process
+	int result = sched_setaffinity(0, sizeof(mask), &mask);
+	if (result != 0) {
+		printf("sched_setaffinity() failed!\n");
+	}
+	return result;
+}
+
+/**
+ * Sets nice value
+ * 
+ * @param nice_val The nice value to be set, range from [-20, 19]
+ * @return Nice value of the program
+ */
+int set_nice(int nice_val) {
+	int result = nice(nice_val);
+	if (result == -1) {
+		printf("Set nice() failed, remember to run with root access (ignore if you set nice value to %d)\n", result);
+	}
+	return result;
+}
+
 int main(int argc, char **argv)
 {
+    // setup nice & cpu core affinity 
+    set_core(1);
+    set_nice(-20);
+
     srand(time(0));
 	void *addr;
 	size_t length = LENGTH;
